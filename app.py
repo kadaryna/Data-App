@@ -76,20 +76,6 @@ if tab_choice == "📈 Monitoring":
     if response != "All":
         df_sub = df_sub[df_sub["response"] == response]
 
-    with col1:
-        date_min = df["date"].min().date()
-        date_max = df["date"].max().date()
-        date_range = st.date_input("Select a date range", [date_min, date_max], min_value=date_min, max_value=date_max)
-
-
-    # Apply date filter
-    if len(date_range) == 2:
-        df_sub = df_sub[(df_sub["date"].dt.date >= date_range[0]) & (df_sub["date"].dt.date <= date_range[1])]
-        st.write(f"Start Date: {date_min}")
-        st.write(f"End Date: {date_max}")
-    else:
-        st.warning("Please select both a start and end date.")
-
     # Daily metrics
     daily = df_sub.groupby("date").agg(
         sends=("is_read", "count"),
@@ -131,6 +117,15 @@ if tab_choice == "📈 Monitoring":
 
     # Charts
     st.subheader("Metrics over time")
+    chart_col1, chart_col2 = st.columns([2, 1])
+    with chart_col1:
+        metric_choice = st.selectbox("Metric", ["delivery_rate", "open_rate", "ctr", "open_to_click", "paid_spend_rate",
+                                                "click_to_spend", "avg_not_free_credits"])
+    with chart_col2:
+        date_min = df_sub["date"].min().date()
+        date_max = df_sub["date"].max().date()
+        date_range = st.date_input("Date range", [date_min, date_max], min_value=date_min, max_value=date_max)
+
     metric_choice = st.selectbox("Metric", ["delivery_rate","open_rate", "ctr", "open_to_click", "paid_spend_rate", "click_to_spend", "avg_not_free_credits"])
 
     mean_val = daily[metric_choice].mean()
