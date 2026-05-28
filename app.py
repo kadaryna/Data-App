@@ -225,15 +225,17 @@ else:
 
     results_df = pd.DataFrame(results_all)
 
-    def highlight(row):
-        if not row["_sig"]:
+    display_df = results_df.drop(columns=["_lift_val", "_sig"])
+
+    def highlight_row(row):
+        orig = results_df.iloc[row.name]
+        if not orig["_sig"]:
             return [""] * len(row)
-        color = "background-color: #d4edda" if row["_lift_val"] > 0 else "background-color: #f8d7da"
+        color = "background-color: #d4edda" if orig["_lift_val"] > 0 else "background-color: #f8d7da"
         return [color] * len(row)
 
-    st.subheader(f"Results — {group}")
     st.dataframe(
-        results_df.drop(columns=["_lift_val", "_sig"]).style.apply(highlight, axis=1),
+        display_df.style.apply(highlight_row, axis=1),
         use_container_width=True, hide_index=True
     )
 
