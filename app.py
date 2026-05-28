@@ -188,48 +188,42 @@ if tab_choice == "📈 Monitoring":
         st.markdown(summary)
 
 # A/B ANALYSIS
-
 else:
     st.title("🧪 A/B Test Analysis")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        group = st.selectbox("Test group", ["group_1", "group_2", "group_3", "group_4"])
-    with col2:
-        segment = st.selectbox("Segment", ["All", "Buyer", "Not Buyer"])
+    group = st.selectbox("Test group", ["group_1", "group_2", "group_3", "group_4"])
 
-    df_sub = df.copy()
-    if segment != "All":
-        df_sub = df_sub[df_sub["buyer"] == segment]
+    # Results for all segments at once
+    results_all = []
+    for segment, segment_label in [("All", "All"), ("Buyer", "Buyer"), ("Not Buyer", "Not Buyer")]:
+        df_sub = df.copy()
+        if segment != "All":
+            df_sub = df_sub[df_sub["buyer"] == segment]
 
-    # Results table
-    results = []
-    for metric, label in [("is_read", "Open Rate"), ("is_clicked", "CTR"), ("is_paid_spend", "Paid Spend Rate")]:
-        test    = df_sub[df_sub[group] == "Test"]
-        control = df_sub[df_sub[group] == "Control"]
-        ct = pd.crosstab(df_sub[group], df_sub[metric])
-        if ct.shape == (2, 2):
-            _, p, _, _ = chi2_contingency(ct)
-        else:
-            p = 1.0
-        test_rate = test[metric].mean()
-        control_rate = control[metric].mean()
-        lift   = test_rate / control_rate - 1 if control_rate else 0
-        results.append({
-            "Metric":        label,
-            "Test":          f"{test_rate:.3%}",
-            "Control":       f"{control_rate:.3%}",
-            "Lift":          f"{lift:+.1%}",
-            "p-value":       f"{p:.4f}",
-            "Significant":   "✅ Yes" if p < 0.05 else "❌ No",
-            "_lift_val":     lift,
-            "_sig":          p < 0.05,
-        })
+        for metric, label in [("is_read", "Open Rate"), ("is_clicked", "CTR"), ("is_paid_spend", "Paid Spend Rate")]:
+            test    = df_sub[df_sub[group] == "Test"]
+            control = df_sub[df_sub[group] == "Control"]
+            ct = pd.crosstab(df_sub[group], df_sub[metric])
+            if ct.shape == (2, 2):
+                _, p, _, _ = chi2_contingency(ct)
+            else:
+                p = 1.0
+            test_rate    = test[metric].mean()
+            control_rate = control[metric].mean()
+            lift = test_rate / control_rate - 1 if control_rate else 0
+            results_all.append({
+                "Segment":   segment_label,
+                "Metric":    label,
+                "Test":      f"{test_rate:.3%}",
+                "Control":   f"{control_rate:.3%}",
+                "Lift":      f"{lift:+.1%}",
+                "p-value":   f"{p:.4f}",
+                "Significant": "✅ Yes" if p < 0.05 else "❌ No",
+                "_lift_val": lift,
+                "_sig":      p < 0.05,
+            })
 
-    results_df = pd.DataFrame(results)
-
-    # Highlight significant rows
-    st.subheader(f"Results — {group} | {segment}")
+    results_df = pd.DataFrame(results_all)
 
     def highlight(row):
         if not row["_sig"]:
@@ -237,46 +231,47 @@ else:
         color = "background-color: #d4edda" if row["_lift_val"] > 0 else "background-color: #f8d7da"
         return [color] * len(row)
 
-    display_df = results_df.drop(columns=["_lift_val", "_sig"])
+    st.subheader(f"Results — {group}")
     st.dataframe(
-        results_df.style.apply(highlight, axis=1),
+        results_df.drop(columns=["_lift_val", "_sig"]).style.apply(highlight, axis=1),
         use_container_width=True, hide_index=True
     )
 
-    # Lift bar chart
-    st.subheader("Lift by metric")
+    # Lift chart — per segment
+    st.subheader("Lift by metric and segment")
     fig2 = px.bar(
         results_df,
         x="Metric", y="_lift_val",
-        color="_sig",
-        color_discrete_map={True: "#4472C4", False: "#A9C4E8"},
-        labels={"_lift_val": "Lift", "_sig": "Significant"},
+        color="Segment",
+        barmode="group",
+        color_discrete_map={"All": "#A9C4E8", "Buyer": "#4472C4", "Not Buyer": "#6c757d"},
         text=results_df["Lift"],
+        pattern_shape="Significant",
     )
     fig2.add_hline(y=0, line_color="black", line_width=1)
     fig2.update_yaxes(tickformat=".0%")
-    fig2.update_layout(height=300, margin=dict(t=20), showlegend=False)
+    fig2.update_layout(height=350, margin=dict(t=20))
     st.plotly_chart(fig2, use_container_width=True)
 
-    # AI recommendation placeholder
+    # AI recommendation
     st.subheader("🤖 AI Recommendation")
     if st.button("Generate recommendation"):
-        sig_results = [r for r in results if r["_sig"]]
-        if not sig_results:
-            rec = f"**{group}** shows no statistically significant effects for the **{segment}** segment. Consider running the test longer or expanding the sample."
+        buyer_results = [r for r in results_all if r["Segment"] == "Buyer" and r["_sig"]]
+        if not buyer_results:
+            rec = f"**{group}** shows no statistically significant effects for Buyers. Consider running the test longer."
         else:
-            pos = [r for r in sig_results if r["_lift_val"] > 0]
-            neg = [r for r in sig_results if r["_lift_val"] < 0]
-            rec = f"**{group} | {segment}**\n\n"
+            pos = [r for r in buyer_results if r["_lift_val"] > 0]
+            neg = [r for r in buyer_results if r["_lift_val"] < 0]
+            rec = f"**{group} — Buyer segment:**\n\n"
             if pos:
-                rec += "**Positive effects:** " + ", ".join([f"{r['Metric']} {r['Lift']}" for r in pos]) + "\n\n"
+                rec += "**Positive:** " + ", ".join([f"{r['Metric']} {r['Lift']}" for r in pos]) + "\n\n"
             if neg:
-                rec += "**Negative effects:** " + ", ".join([f"{r['Metric']} {r['Lift']}" for r in neg]) + "\n\n"
+                rec += "**Negative:** " + ", ".join([f"{r['Metric']} {r['Lift']}" for r in neg]) + "\n\n"
             if pos and not neg:
                 rec += "✅ **Recommendation: ship Test version.**"
             elif neg and not pos:
-                rec += "❌ **Recommendation: do not ship. Test hurts key metrics.**"
+                rec += "❌ **Recommendation: do not ship.**"
             else:
-                rec += "⚠️ **Mixed results. Review trade-offs before decision.**"
-            rec += "\n\n> ℹ️ Connect Claude API to get AI-generated narrative recommendation."
+                rec += "⚠️ **Mixed results. Review trade-offs.**"
+            rec += "\n\n> ℹ️ Connect Claude API for AI-generated narrative."
         st.markdown(rec)
