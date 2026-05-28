@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from scipy.stats import chi2_contingency
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -119,17 +118,10 @@ if tab_choice == "📈 Monitoring":
     mean_val = daily[metric_choice].mean()
     alert_val = mean_val * (1 - threshold / 100)
 
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(
-        go.Bar(x=daily["date"], y=daily["sends"], name='Lists sent', marker = dict(color="#D3D3D3")),
-        secondary_y=True
-
-    )
+    fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=daily["date"], y=daily[metric_choice],
-        mode="lines+markers", name=metric_choice, line=dict(color="#4472C4", width=2),
-        secondary_y=False
-
+        mode="lines+markers", name=metric_choice, line=dict(color="#4472C4", width=2)
     ))
     fig.add_hline(y=mean_val,   line_dash="dash", line_color="gray",  annotation_text="avg")
     fig.add_hline(y=alert_val,  line_dash="dot",  line_color="red",   annotation_text=f"alert -{threshold}%")
