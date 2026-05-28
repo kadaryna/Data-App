@@ -120,11 +120,15 @@ if tab_choice == "📈 Monitoring":
 
     fig = go.Figure()
     fig.add_trace(
-        go.Bar(x=daily["date"], y=daily["sends"], name='Lists sent', marker = dict(color="#D3D3D3"))
+        go.Bar(x=daily["date"], y=daily["sends"], name='Lists sent', marker = dict(color="#D3D3D3")),
+        secondary_y=True
+
     )
     fig.add_trace(go.Scatter(
         x=daily["date"], y=daily[metric_choice],
-        mode="lines+markers", name=metric_choice, line=dict(color="#4472C4", width=2)
+        mode="lines+markers", name=metric_choice, line=dict(color="#4472C4", width=2),
+        secondary_y=False
+
     ))
     fig.add_hline(y=mean_val,   line_dash="dash", line_color="gray",  annotation_text="avg")
     fig.add_hline(y=alert_val,  line_dash="dot",  line_color="red",   annotation_text=f"alert -{threshold}%")
