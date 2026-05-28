@@ -174,10 +174,11 @@ if tab_choice == "📈 Monitoring":
         yref="y2"
     )
     fig.add_annotation(
-        x=daily_chart["date"].max(), y=alert_val,
+        x=daily_chart["date"].min(), y=alert_val,
         text=f"alert -{threshold}%",
         showarrow=False, yref="y2",
-        xanchor="right", font=dict(color="red")
+        xanchor="left", yanchor="bottom",
+        font=dict(color="red", size=11)
     )
 
     if metric_choice == "avg_not_free_credits":
