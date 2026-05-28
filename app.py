@@ -79,11 +79,16 @@ if tab_choice == "📈 Monitoring":
     with col1:
         date_min = df["date"].min().date()
         date_max = df["date"].max().date()
-        date_range = st.date_input("Date range", [date_min, date_max], min_value=date_min, max_value=date_max)
+        date_range = st.date_input("Select a date range", [date_min, date_max], min_value=date_min, max_value=date_max)
+
 
     # Apply date filter
     if len(date_range) == 2:
         df_sub = df_sub[(df_sub["date"].dt.date >= date_range[0]) & (df_sub["date"].dt.date <= date_range[1])]
+        st.write(f"Start Date: {date_min}")
+        st.write(f"End Date: {date_max}")
+    else:
+        st.warning("Please select both a start and end date.")
 
     # Daily metrics
     daily = df_sub.groupby("date").agg(
