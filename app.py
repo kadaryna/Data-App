@@ -105,6 +105,7 @@ if tab_choice == "📈 Monitoring":
 
     daily_kpi = daily[daily["date"].dt.date < daily["date"].dt.date.max()]
 
+
     last_date = daily_kpi["date"].iloc[-1].strftime('%b %d')
     prev_date = daily_kpi["date"].iloc[-2].strftime('%b %d') if len(daily_kpi) >= 2 else last_date
     st.caption(f"Delta: {last_date} vs {prev_date}")
@@ -238,37 +239,75 @@ if tab_choice == "📈 Monitoring":
         if not groq_client:
             st.warning("Please add GROQ_API_KEY to .streamlit/secrets.toml")
         else:
-            open_trend = "declining" if delta_open < 0 else "stable or improving"
-            ctr_trend = "declining" if delta_ctr < 0 else "stable or improving"
+            # 1. Розраховуємо реальну динаміку всередині обраного користувачем періоду (daily_chart)
+            # Визначаємо загальний тренд методом порівняння першої та другої половини обраного періоду
+            half_point = len(daily_chart) // 2
+            if half_point > 0:
+                first_half_open = daily_chart["open_rate"].iloc[:half_point].mean()
+                second_half_open = daily_chart["open_rate"].iloc[half_point:].mean()
+                open_trend_status = "improving" if second_half_open > first_half_open else "declining"
+
+                first_half_ctr = daily_chart["ctr"].iloc[:half_point].mean()
+                second_half_ctr = daily_chart["ctr"].iloc[half_point:].mean()
+                ctr_trend_status = "improving" if second_half_ctr > first_half_ctr else "declining"
+            else:
+                open_trend_status, ctr_trend_status = "stable", "stable"
+
+            # 2. Рахуємо кількість алертів та витягуємо дати
             alert_dates = daily_chart[daily_chart[metric_choice] < alert_val]["date"].dt.strftime('%b %d').tolist()
 
+            # 3. Знаходимо топ-правило за об'ємом надсилань та найкраще за CTR з твоїх нових хітмепів/масивів
+            top_rule_by_volume = pivot_sends.sum(axis=1).idxmax() if not pivot_sends.empty else "N/A"
+            top_rule_by_ctr = pivot_ctr.mean(axis=1).idxmax() if not pivot_ctr.empty else "N/A"
+
+            # 4. Формуємо розширений контекст для довгого періоду (Data Summary)
             data_summary = f"""
-                Period: {daily_chart['date'].min().strftime('%b %d')} to {daily_chart['date'].max().strftime('%b %d')}
-                Segment: {segment} | Rule filter: {rule}
-                Avg Open Rate: {avg_open:.2%}, Last Day Open: {last_open:.2%}, Trend: {open_trend}
-                Avg CTR: {avg_ctr:.2%}, Last Day CTR: {last_ctr:.2%}, Trend: {ctr_trend}
-                Selected Metric for Alerting: {metric_choice}
-                Critical Drops Detected on Dates: {', '.join(alert_dates) if alert_dates else 'None'}
+                --- TEMPORAL CONTEXT ---
+                Analyzed Period: {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({len(daily_chart)} days total)
+                Selected Segment: {segment} | Active Rule Filter: {rule} | Active Response Filter: {response}
+
+                --- MACRO METRICS (Period Averages) ---
+                - Average Open Rate over this period: {daily_chart['open_rate'].mean():.2%} (Trend: Overall {open_trend_status})
+                - Average CTR over this period: {daily_chart['ctr'].mean():.2%} (Trend: Overall {ctr_trend_status})
+                - Average Open-to-Click (CTOR): {daily_chart['open_to_click'].mean():.2%}
+                - Paid Spend Rate: {daily_chart['paid_spend_rate'].mean():.3%}
+
+                --- ANOMALIES & ALERTS ---
+                - Metric Monitored for Alerts: {metric_choice} (Threshold set to -{threshold}% from baseline)
+                - Total Alert Days Detected: {len(alert_dates)}
+                - Specific Alert Dates: {', '.join(alert_dates) if alert_dates else 'None (System is stable)'}
+
+                --- STRUCTURAL INSIGHTS (Rule & Response Breakdown) ---
+                - Rule with highest email volume: '{top_rule_by_volume}'
+                - Rule with highest average CTR: '{top_rule_by_ctr}'
                 """
 
+            # 5. Оновлений системний промпт для довгострокового аналізу
             system_prompt = (
-                "You are an expert Lead Product and Growth Analyst in a mobile tech company. Your job is to analyze email marketing metrics, "
-                "identify root causes of anomalies, and write clear, concise executive summaries for the marketing team. "
-                "Be brief, precise, focus on business logic (e.g., deliverability issues, technical bugs, bad targeting), "
-                "and NEVER hallucinate stats not provided in the context."
+                "You are an expert Lead Product and Growth Analyst in a mobile tech company. Your task is to perform "
+                "a macro-level review of email marketing performance over an extended time horizon. "
+                "Focus heavily on systemic trends, campaign fatigue, audience segment behavior, and lifecycle rule performance. "
+                "Be sharp, concise, action-oriented, and write strictly based on the provided data. Never hallucinate generic marketing tips."
             )
 
+            # 6. Чітка інструкція для структурування звітів для керівництва
             user_prompt = f"""
-                Based on the following aggregated metrics from our marketing dashboard, write an executive summary in English:
+                Analyze the following comprehensive metrics dataset representing a macro period of performance:
                 {data_summary}
 
-                Structure your response using markdown formatting:
-                1. **Executive Summary** (Max 3 brief bullet points focusing on metrics dynamic).
-                2. **Anomaly & Risk Analysis** (If alerts exist, suggest 2 realistic reasons for the drop on those specific days. If no alerts, comment on system health).
-                3. **Action Items** (Provide 2 tactical next steps for the growth team).
+                Generate a high-level narrative summary in English for the Product Management and Leadership team. Use markdown:
+
+                1. **📊 Macro Period Insights** - Summarize the overall performance over the {len(daily_chart)}-day period. 
+                   - Interpret the trends (Open Rate is {open_trend_status}, CTR is {ctr_trend_status}) and state what this implies about user engagement and creative asset fatigue.
+
+                2. **⚠️ Risk & Anomaly Assessment**
+                   - Analyze the system stability. If there are alert days, contextualize what could cause structural drops across multiple days (e.g., deliverability blocks, domain throttling, or pricing/credit model changes). If no alerts, validate why the current baseline is healthy.
+
+                3. **🎯 Strategic Recommendations**
+                   - Provide exactly 2 macro-level, data-driven action items. Leverage the structural insights regarding rules (e.g., optimization of '{top_rule_by_volume}' or scaling of '{top_rule_by_ctr}').
                 """
 
-            with st.spinner("🤖 Groq is analyzing..."):
+            with st.spinner("🤖 Groq 120B is analyzing the macro period..."):
                 try:
                     completion = groq_client.chat.completions.create(
                         model="openai/gpt-oss-120b",
