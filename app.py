@@ -166,8 +166,19 @@ if tab_choice == "📈 Monitoring":
         yaxis="y2"
     ))
 
-    fig.add_hline(y=alert_val, line_dash="dot", line_color="red",
-                  annotation_text=f"alert -{threshold}%")
+    fig.add_shape(
+        type="line",
+        x0=daily_chart["date"].min(), x1=daily_chart["date"].max(),
+        y0=alert_val, y1=alert_val,
+        line=dict(dash="dot", color="red"),
+        yref="y2"
+    )
+    fig.add_annotation(
+        x=daily_chart["date"].max(), y=alert_val,
+        text=f"alert -{threshold}%",
+        showarrow=False, yref="y2",
+        xanchor="right", font=dict(color="red")
+    )
 
     if metric_choice == "avg_not_free_credits":
         y1_format = ".2f"
