@@ -126,8 +126,6 @@ if tab_choice == "📈 Monitoring":
         date_max = df_sub["date"].max().date()
         date_range = st.date_input("Date range", [date_min, date_max], min_value=date_min, max_value=date_max)
 
-    metric_choice = st.selectbox("Metric", ["delivery_rate","open_rate", "ctr", "open_to_click", "paid_spend_rate", "click_to_spend", "avg_not_free_credits"])
-
     mean_val = daily[metric_choice].mean()
     alert_val = mean_val * (1 - threshold / 100)
 
