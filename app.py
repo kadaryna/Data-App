@@ -82,12 +82,17 @@ if tab_choice == "📈 Monitoring":
         opens=("is_read", "sum"),
         clicks=("is_clicked", "sum"),
         deliveries=("is_delivered", "sum"),
-        spends=("is_paid_spend", "sum"),
-        avg_not_free_credits=(
-            "not_free_credits",
-            lambda x: x[df_sub.loc[x.index, "is_clicked"] == 1].mean()
-        )
+        spends=("is_paid_spend", "sum")
     ).reset_index()
+
+    daily = daily.merge(
+        df_sub[df_sub["is_clicked"] == 1]
+        .groupby("date").agg(
+            avg_not_free_credits=("not_free_credits", "mean"))
+        .reset_index(),
+        on="date",
+        how="left"
+    )
 
     daily["delivery_rate"] = daily["deliveries"] / daily["sends"]
     daily["open_rate"]  = daily["opens"]  / daily["deliveries"]
