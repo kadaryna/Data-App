@@ -5,3 +5,4 @@ plotly
 scipy
 google-auth
 google-api-python-client
+Groq
