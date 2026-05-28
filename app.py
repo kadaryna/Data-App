@@ -193,62 +193,75 @@ else:
 
     group = st.selectbox("Test group", ["group_1", "group_2", "group_3", "group_4"])
 
-    # Results for all segments at once
-    results_all = []
-    for segment, segment_label in [("All", "All"), ("Buyer", "Buyer"), ("Not Buyer", "Not Buyer")]:
+    # Results for all segments
+    segments = [("All", "All"), ("Buyer", "Buyer"), ("Not Buyer", "Not Buyer")]
+
+    all_results = {}
+    for segment, segment_label in segments:
         df_sub = df.copy()
         if segment != "All":
             df_sub = df_sub[df_sub["buyer"] == segment]
 
+        rows = []
         for metric, label in [("is_read", "Open Rate"), ("is_clicked", "CTR"), ("is_paid_spend", "Paid Spend Rate")]:
-            test    = df_sub[df_sub[group] == "Test"]
+            test = df_sub[df_sub[group] == "Test"]
             control = df_sub[df_sub[group] == "Control"]
             ct = pd.crosstab(df_sub[group], df_sub[metric])
-            if ct.shape == (2, 2):
-                _, p, _, _ = chi2_contingency(ct)
-            else:
-                p = 1.0
-            test_rate    = test[metric].mean()
+            _, p, _, _ = chi2_contingency(ct) if ct.shape == (2, 2) else (None, 1.0, None, None)
+            test_rate = test[metric].mean()
             control_rate = control[metric].mean()
             lift = test_rate / control_rate - 1 if control_rate else 0
-            results_all.append({
-                "Segment":   segment_label,
-                "Metric":    label,
-                "Test":      f"{test_rate:.3%}",
-                "Control":   f"{control_rate:.3%}",
-                "Lift":      f"{lift:+.1%}",
-                "p-value":   f"{p:.4f}",
+            rows.append({
+                "Metric": label,
+                "Test": f"{test_rate:.3%}",
+                "Control": f"{control_rate:.3%}",
+                "Lift": f"{lift:+.1%}",
+                "p-value": f"{p:.4f}",
                 "Significant": "✅ Yes" if p < 0.05 else "❌ No",
                 "_lift_val": lift,
-                "_sig":      p < 0.05,
+                "_sig": p < 0.05,
             })
+        all_results[segment_label] = rows
 
-    results_df = pd.DataFrame(results_all)
+    # Three separate tables
+    st.subheader(f"Results — {group}")
+    for segment_label, rows in all_results.items():
+        st.markdown(f"**{segment_label}**")
+        rdf = pd.DataFrame(rows)
 
-    display_df = results_df.drop(columns=["_lift_val", "_sig"])
+        def highlight_row(row):
+            orig = rdf.iloc[row.name]
+            if not orig["_sig"]:
+                return [""] * len(row)
+            color = "background-color: #d4edda" if orig["_lift_val"] > 0 else "background-color: #f8d7da"
+            return [color] * len(row)
 
-    def highlight_row(row):
-        orig = results_df.iloc[row.name]
-        if not orig["_sig"]:
-            return [""] * len(row)
-        color = "background-color: #d4edda" if orig["_lift_val"] > 0 else "background-color: #f8d7da"
-        return [color] * len(row)
+        st.dataframe(
+            rdf.drop(columns=["_lift_val", "_sig"]).style.apply(highlight_row, axis=1),
+            use_container_width=True, hide_index=True
+        )
+        st.divider()
 
-    st.dataframe(
-        display_df.style.apply(highlight_row, axis=1),
-        use_container_width=True, hide_index=True
-    )
-
-    # Lift chart — per segment
+    # Lift chart
     st.subheader("Lift by metric and segment")
+    chart_rows = []
+    for segment_label, rows in all_results.items():
+        for r in rows:
+            chart_rows.append({
+                "Segment": segment_label,
+                "Metric": r["Metric"],
+                "Lift": r["_lift_val"],
+                "Label": r["Lift"],
+            })
+    chart_df = pd.DataFrame(chart_rows)
+
     fig2 = px.bar(
-        results_df,
-        x="Metric", y="_lift_val",
+        chart_df,
+        x="Metric", y="Lift",
         color="Segment",
         barmode="group",
         color_discrete_map={"All": "#A9C4E8", "Buyer": "#4472C4", "Not Buyer": "#6c757d"},
-        text=results_df["Lift"],
-        pattern_shape="Significant",
+        text="Label",
     )
     fig2.add_hline(y=0, line_color="black", line_width=1)
     fig2.update_yaxes(tickformat=".0%")
@@ -258,9 +271,9 @@ else:
     # AI recommendation
     st.subheader("🤖 AI Recommendation")
     if st.button("Generate recommendation"):
-        buyer_results = [r for r in results_all if r["Segment"] == "Buyer" and r["_sig"]]
+        buyer_results = [r for r in all_results["Buyer"] if r["_sig"]]
         if not buyer_results:
-            rec = f"**{group}** shows no statistically significant effects for Buyers. Consider running the test longer."
+            rec = f"**{group}** shows no statistically significant effects for Buyers."
         else:
             pos = [r for r in buyer_results if r["_lift_val"] > 0]
             neg = [r for r in buyer_results if r["_lift_val"] < 0]
