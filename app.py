@@ -82,7 +82,11 @@ if tab_choice == "📈 Monitoring":
         opens=("is_read", "sum"),
         clicks=("is_clicked", "sum"),
         deliveries=("is_delivered", "sum"),
-        spends=("is_paid_spend", "sum")
+        spends=("is_paid_spend", "sum"),
+        avg_not_free_credits=(
+            "not_free_credits",
+            lambda x: x[df_sub.loc[x.index, "is_clicked"] == 1].mean()
+        )
     ).reset_index()
 
     daily["delivery_rate"] = daily["deliveries"] / daily["sends"]
@@ -91,7 +95,6 @@ if tab_choice == "📈 Monitoring":
     daily["open_to_click"] = daily["clicks"] / daily["opens"].replace(0, np.nan)
     daily["paid_spend_rate"] = daily["spends"] / daily["sends"]
     daily["click_to_spend"] = daily["spends"] / daily["clicks"]
-    daily["avg_not_free_credits"] = daily.loc[daily['is_clicked']==1, 'not_free_credits'].mean()
 
     # KPI cards
     st.subheader("KPIs")
