@@ -4,6 +4,9 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from scipy.stats import chi2_contingency
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+import io
 
 st.set_page_config(page_title="Email Marketing Dashboard", layout="wide")
 
@@ -11,51 +14,28 @@ st.set_page_config(page_title="Email Marketing Dashboard", layout="wide")
 
 @st.cache_data
 def load_data():
-    np.random.seed(42)
-    n = 5000
-    dates = pd.date_range("2024-10-02", "2024-10-10", freq="D")
-    rules = ["FH", "FD", "FW", "SW"]
-    rule_weights = [0.08, 0.59, 0.28, 0.05]
-
-    df = pd.DataFrame({
-        "date": np.random.choice(dates, n),
-        "buyer": np.random.choice(["Buyer", "Non-Buyer"], n, p=[0.097, 0.903]),
-        "rule": np.random.choice(rules, n, p=rule_weights),
-        "group_1": np.random.choice(["Test", "Control"], n),
-        "group_2": np.random.choice(["Test", "Control"], n),
-        "group_3": np.random.choice(["Test", "Control"], n),
-        "group_4": np.random.choice(["Test", "Control"], n),
-    })
-
-    # Realistic open/click rates per rule
-    open_rate_map = {"FH": 0.39, "FD": 0.20, "FW": 0.05, "SW": 0.02}
-    ctr_map       = {"FH": 0.17, "FD": 0.014, "FW": 0.005, "SW": 0.004}
-    buyer_open_boost = {"Buyer": 1.35, "Non-Buyer": 1.0}
-    buyer_ctr_boost  = {"Buyer": 2.0,  "Non-Buyer": 1.0}
-
-    # group_1 Test boosts CTR for buyers
-    ctr_group1_boost = np.where(
-        (df["group_1"] == "Test") & (df["buyer"] == "Buyer"), 1.65, 1.0
+    credentials = service_account.Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=["https://www.googleapis.com/auth/drive.readonly"]
     )
+    service = build("drive", "v3", credentials=credentials)
+    file_id = "18ONnHkUCXaHiDrTGgAONpreX1FdOXeL5"
+    request = service.files().get_media(fileId=file_id)
+    content = io.BytesIO(request.execute())
+    df = pd.read_csv(content, sep=";")
 
-    df["is_read"] = np.random.binomial(
-        1,
-        np.clip(
-            df["rule"].map(open_rate_map) * df["buyer"].map(buyer_open_boost), 0, 1
-        )
-    )
-    df["is_clicked"] = np.random.binomial(
-        1,
-        np.clip(
-            df["rule"].map(ctr_map)
-            * df["buyer"].map(buyer_ctr_boost)
-            * ctr_group1_boost, 0, 1
-        )
-    )
-    df["is_paid_spend"] = np.random.binomial(
-        1,
-        np.where(df["buyer"] == "Buyer", 0.002, 0.0001)
-    )
+    for col in ['delivery_ts', 'send_ts', 'read_ts', 'click_ts']:
+        df[col] = pd.to_datetime(pd.to_numeric(df[col], errors='coerce'), unit='s', utc=True)
+    for col in ['last_answer_timestamp', 'confirm_timestamp']:
+        df[col] = pd.to_datetime(df[col], errors='coerce')
+
+    df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+    df['buyer'] = df['buyer'].str.strip()
+    df['rule'] = df['rule'].str.strip()
+    df['not_free_credits'] = pd.to_numeric(df['not_free_credits'], errors='coerce').fillna(0)
+    df['is_read'] = df['read_ts'].notna().astype(int)
+    df['is_clicked'] = df['click_ts'].notna().astype(int)
+    df['is_paid_spend'] = (df['not_free_credits'] > 0).astype(int)
 
     return df
 
