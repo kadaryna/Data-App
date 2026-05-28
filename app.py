@@ -105,20 +105,22 @@ if tab_choice == "📈 Monitoring":
     daily["paid_spend_rate"] = daily["spends"] / daily["sends"]
     daily["click_to_spend"] = daily["spends"] / daily["clicks"]
 
-    # KPI cards
+    #KPIs
     st.subheader("KPIs")
-    k1, k2, k3, k4 = st.columns(4)
-    avg_open = daily["open_rate"].mean()
-    avg_ctr  = daily["ctr"].mean()
-    last_open = daily["open_rate"].iloc[-1]
-    last_ctr  = daily["ctr"].iloc[-1]
-    delta_open = last_open - avg_open
-    delta_ctr  = last_ctr  - avg_ctr
+    kpi_metrics = {
+        "Open Rate": "open_rate",
+        "CTR": "ctr",
+        "Open-to-Click": "open_to_click",
+        "Paid Spend Rate": "paid_spend_rate",
+    }
 
-    k1.metric("Avg Open Rate",  f"{avg_open:.1%}")
-    k2.metric("Avg CTR",        f"{avg_ctr:.2%}")
-    k3.metric("Last Day Open",  f"{last_open:.1%}", f"{delta_open:+.1%}")
-    k4.metric("Last Day CTR",   f"{last_ctr:.2%}",  f"{delta_ctr:+.2%}")
+    cols = st.columns(4)
+    for col, (label, key) in zip(cols, kpi_metrics.items()):
+        avg_val = daily[key].mean()
+        # delta = last full day vs average
+        last_val = daily[key].iloc[-2] if len(daily) >= 2 else daily[key].iloc[-1]
+        delta = last_val - avg_val
+        col.metric(label, f"{avg_val:.2%}", f"{delta:+.2%}")
 
     # Charts
     st.subheader("Metrics over time")
@@ -163,16 +165,40 @@ if tab_choice == "📈 Monitoring":
     else:
         st.success("✅ No critical drops detected")
 
-    # Rule breakdown
-    st.subheader("Breakdown by Rule")
-    rule_df = df_sub.groupby("rule").agg(
-        sends=("is_read", "count"),
-        open_rate=("is_read", "mean"),
-        ctr=("is_clicked", "mean"),
-    ).reset_index().sort_values("open_rate", ascending=False)
-    rule_df["open_rate"] = rule_df["open_rate"].map("{:.1%}".format)
-    rule_df["ctr"]       = rule_df["ctr"].map("{:.2%}".format)
-    st.dataframe(rule_df, use_container_width=True, hide_index=True)
+    # Heatmaps ───────────────────────────────────────────────────────────
+    st.subheader("Rule × Response breakdown")
+    hcol1, hcol2 = st.columns(2)
+
+    pivot_sends = df_sub.pivot_table(
+        index="rule", columns="response", values="is_read",
+        aggfunc="count", fill_value=0
+    )
+    pivot_ctr = df_sub.pivot_table(
+        index="rule", columns="response", values="is_clicked",
+        aggfunc="mean", fill_value=0
+    )
+
+    with hcol1:
+        fig_h1 = px.imshow(
+            pivot_sends,
+            text_auto=True,
+            color_continuous_scale="Blues",
+            title="Sends volume",
+            aspect="auto"
+        )
+        fig_h1.update_layout(height=300, margin=dict(t=40))
+        st.plotly_chart(fig_h1, use_container_width=True)
+
+    with hcol2:
+        fig_h2 = px.imshow(
+            pivot_ctr.round(3),
+            text_auto=".1%",
+            color_continuous_scale="RdYlGn",
+            title="CTR",
+            aspect="auto"
+        )
+        fig_h2.update_layout(height=300, margin=dict(t=40))
+        st.plotly_chart(fig_h2, use_container_width=True)
 
     # AI Summary placeholder
     st.subheader("🤖 AI Summary")
