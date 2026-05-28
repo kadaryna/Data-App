@@ -76,6 +76,15 @@ if tab_choice == "📈 Monitoring":
     if response != "All":
         df_sub = df_sub[df_sub["response"] == response]
 
+    with col1:
+        date_min = df["date"].min().date()
+        date_max = df["date"].max().date()
+        date_range = st.date_input("Date range", [date_min, date_max], min_value=date_min, max_value=date_max)
+
+    # Apply date filter
+    if len(date_range) == 2:
+        df_sub = df_sub[(df_sub["date"].dt.date >= date_range[0]) & (df_sub["date"].dt.date <= date_range[1])]
+
     # Daily metrics
     daily = df_sub.groupby("date").agg(
         sends=("is_read", "count"),
@@ -129,7 +138,12 @@ if tab_choice == "📈 Monitoring":
     ))
     fig.add_hline(y=mean_val,   line_dash="dash", line_color="gray",  annotation_text="avg")
     fig.add_hline(y=alert_val,  line_dash="dot",  line_color="red",   annotation_text=f"alert -{threshold}%")
-    fig.update_yaxes(tickformat=".1%")
+    if metric_choice == "avg_not_free_credits":
+        fig.update_yaxes(tickformat=".2f")
+    elif metric_choice in ["paid_spend_rate", "click_to_spend"]:
+        fig.update_yaxes(tickformat=".3%")
+    else:
+        fig.update_yaxes(tickformat=".1%")
     fig.update_layout(height=350, margin=dict(t=20))
     st.plotly_chart(fig, use_container_width=True)
 
@@ -178,7 +192,7 @@ else:
     with col1:
         group = st.selectbox("Test group", ["group_1", "group_2", "group_3", "group_4"])
     with col2:
-        segment = st.selectbox("Segment", ["All", "Buyer", "Noy Buyer"])
+        segment = st.selectbox("Segment", ["All", "Buyer", "Not Buyer"])
 
     df_sub = df.copy()
     if segment != "All":
