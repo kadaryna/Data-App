@@ -59,7 +59,7 @@ if tab_choice == "📈 Monitoring":
     # Filters
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        segment = st.selectbox("Segment", ["All", "Buyer", "Non-Buyer"])
+        segment = st.selectbox("Segment", ["All", "Buyer", "Not Buyer"])
     with col2:
         rule = st.selectbox("Rule", ["All"] + sorted(df["rule"].unique().tolist()))
     with col3:
@@ -169,7 +169,7 @@ if tab_choice == "📈 Monitoring":
         """
         st.markdown(summary)
 
-# ── A/B ANALYSIS ─────────────────────────────────────────────────────────────
+# A/B ANALYSIS
 
 else:
     st.title("🧪 A/B Test Analysis")
@@ -178,29 +178,29 @@ else:
     with col1:
         group = st.selectbox("Test group", ["group_1", "group_2", "group_3", "group_4"])
     with col2:
-        segment = st.selectbox("Segment", ["All", "Buyer", "Non-Buyer"])
+        segment = st.selectbox("Segment", ["All", "Buyer", "Noy Buyer"])
 
-    dff = df.copy()
+    df_sub = df.copy()
     if segment != "All":
-        dff = dff[dff["buyer"] == segment]
+        df_sub = df_sub[df_sub["buyer"] == segment]
 
     # Results table
     results = []
     for metric, label in [("is_read", "Open Rate"), ("is_clicked", "CTR"), ("is_paid_spend", "Paid Spend Rate")]:
-        test    = dff[dff[group] == "Test"]
-        control = dff[dff[group] == "Control"]
-        ct = pd.crosstab(dff[group], dff[metric])
+        test    = df_sub[df_sub[group] == "Test"]
+        control = df_sub[df_sub[group] == "Control"]
+        ct = pd.crosstab(df_sub[group], df_sub[metric])
         if ct.shape == (2, 2):
             _, p, _, _ = chi2_contingency(ct)
         else:
             p = 1.0
-        t_rate = test[metric].mean()
-        c_rate = control[metric].mean()
-        lift   = t_rate / c_rate - 1 if c_rate else 0
+        test_rate = test[metric].mean()
+        control_rate = control[metric].mean()
+        lift   = test_rate / control_rate - 1 if control_rate else 0
         results.append({
             "Metric":        label,
-            "Test":          f"{t_rate:.3%}",
-            "Control":       f"{c_rate:.3%}",
+            "Test":          f"{test_rate:.3%}",
+            "Control":       f"{control_rate:.3%}",
             "Lift":          f"{lift:+.1%}",
             "p-value":       f"{p:.4f}",
             "Significant":   "✅ Yes" if p < 0.05 else "❌ No",
