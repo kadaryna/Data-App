@@ -107,6 +107,9 @@ if tab_choice == "📈 Monitoring":
 
     #KPIs
     st.subheader("KPIs")
+    last_date = daily["date"].iloc[-1].strftime('%b %d')
+    prev_date = daily["date"].iloc[-2].strftime('%b %d') if len(daily) >= 2 else last_date
+    st.caption(f"Showing avg across period | Delta: {last_date} vs {prev_date}")
     kpi_metrics = {
         "Open Rate": "open_rate",
         "CTR": "ctr",
@@ -118,8 +121,9 @@ if tab_choice == "📈 Monitoring":
     for col, (label, key) in zip(cols, kpi_metrics.items()):
         avg_val = daily[key].mean()
         # delta = last full day vs average
-        last_val = daily[key].iloc[-2] if len(daily) >= 2 else daily[key].iloc[-1]
-        delta = last_val - avg_val
+        last_val = daily[key].iloc[-1]
+        prev_val = daily[key].iloc[-2] if len(daily) >= 2 else last_val
+        delta = last_val - prev_val
         col.metric(label, f"{avg_val:.2%}", f"{delta:+.2%}")
 
     # Charts
