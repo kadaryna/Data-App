@@ -7,6 +7,7 @@ from scipy.stats import chi2_contingency
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import io
+from groq import Groq
 
 st.set_page_config(page_title="Email Marketing Dashboard", layout="wide")
 
@@ -46,13 +47,17 @@ def load_data():
 
 df = load_data()
 
-# ── Sidebar ──────────────────────────────────────────────────────────────────
+# Groq Api
+try:
+    groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+except Exception:
+    groq_client = None
 
+# Sidebar
 st.sidebar.title("Filters")
 tab_choice = st.sidebar.radio("Section", ["📈 Monitoring", "🧪 A/B Analysis"])
 
-# ── MONITORING ───────────────────────────────────────────────────────────────
-
+# MONITORING
 if tab_choice == "📈 Monitoring":
     st.title("📈 Email Monitoring")
 
@@ -152,7 +157,7 @@ if tab_choice == "📈 Monitoring":
     st.plotly_chart(fig, use_container_width=True)
 
     # Alert
-    drops = daily[daily[metric_choice] < alert_val]["date"]
+    drops = daily_chart[daily_chart[metric_choice] < alert_val]["date"]
     if not drops.empty:
         st.error(f"⚠️ Critical drop below threshold on: {', '.join(drops.dt.strftime('%b %d').tolist())}")
     else:
@@ -171,21 +176,53 @@ if tab_choice == "📈 Monitoring":
 
     # AI Summary placeholder
     st.subheader("🤖 AI Summary")
-    if st.button("Generate summary"):
-        open_trend = "declining" if delta_open < 0 else "stable or improving"
-        ctr_trend  = "declining" if delta_ctr  < 0 else "stable or improving"
-        n_alerts   = len(drops)
-        summary = f"""
-**Period:** {daily['date'].min().strftime('%b %d')} – {daily['date'].max().strftime('%b %d')}
-**Segment:** {segment} | **Rule:** {rule}
+    if st.button("Generate summary", key="mon_ai_btn"):
+        if not groq_client:
+            st.warning("Please add GROQ_API_KEY to .streamlit/secrets.toml")
+        else:
+            open_trend = "declining" if delta_open < 0 else "stable or improving"
+            ctr_trend = "declining" if delta_ctr < 0 else "stable or improving"
+            alert_dates = daily_chart[daily_chart[metric_choice] < alert_val]["date"].dt.strftime('%b %d').tolist()
 
-- Open rate is **{open_trend}** (avg {avg_open:.1%}, last day {last_open:.1%})
-- CTR is **{ctr_trend}** (avg {avg_ctr:.2%}, last day {last_ctr:.2%})
-- **{n_alerts} alert day(s)** detected below the {threshold}% drop threshold
+            data_summary = f"""
+                Period: {daily_chart['date'].min().strftime('%b %d')} to {daily_chart['date'].max().strftime('%b %d')}
+                Segment: {segment} | Rule filter: {rule}
+                Avg Open Rate: {avg_open:.2%}, Last Day Open: {last_open:.2%}, Trend: {open_trend}
+                Avg CTR: {avg_ctr:.2%}, Last Day CTR: {last_ctr:.2%}, Trend: {ctr_trend}
+                Selected Metric for Alerting: {metric_choice}
+                Critical Drops Detected on Dates: {', '.join(alert_dates) if alert_dates else 'None'}
+                """
 
-> ℹ️ Connect Claude API to get AI-generated narrative summary.
-        """
-        st.markdown(summary)
+            system_prompt = (
+                "You are an expert Lead Product and Growth Analyst in a mobile tech company. Your job is to analyze email marketing metrics, "
+                "identify root causes of anomalies, and write clear, concise executive summaries for the marketing team. "
+                "Be brief, precise, focus on business logic (e.g., deliverability issues, technical bugs, bad targeting), "
+                "and NEVER hallucinate stats not provided in the context."
+            )
+
+            user_prompt = f"""
+                Based on the following aggregated metrics from our marketing dashboard, write an executive summary in English:
+                {data_summary}
+
+                Structure your response using markdown formatting:
+                1. **Executive Summary** (Max 3 brief bullet points focusing on metrics dynamic).
+                2. **Anomaly & Risk Analysis** (If alerts exist, suggest 2 realistic reasons for the drop on those specific days. If no alerts, comment on system health).
+                3. **Action Items** (Provide 2 tactical next steps for the growth team).
+                """
+
+            with st.spinner("🤖 Groq is analyzing..."):
+                try:
+                    completion = groq_client.chat.completions.create(
+                        model="llama-3.1-70b-versatile",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        temperature=0.2,
+                    )
+                    st.markdown(completion.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"Insights Generation Mistake: {e}")
 
 # A/B ANALYSIS
 else:
@@ -224,7 +261,7 @@ else:
         all_results[segment_label] = rows
 
     # Three separate tables
-    st.subheader(f"Results — {group}")
+    st.subheader(f"Results")
     for segment_label, rows in all_results.items():
         st.markdown(f"**{segment_label}**")
         rdf = pd.DataFrame(rows)
@@ -270,23 +307,46 @@ else:
 
     # AI recommendation
     st.subheader("🤖 AI Recommendation")
-    if st.button("Generate recommendation"):
-        buyer_results = [r for r in all_results["Buyer"] if r["_sig"]]
-        if not buyer_results:
-            rec = f"**{group}** shows no statistically significant effects for Buyers."
+    if st.button("Generate recommendation", key="ab_ai_btn"):
+        if not groq_client:
+            st.warning("Please add GROQ_API_KEY to .streamlit/secrets.toml")
         else:
-            pos = [r for r in buyer_results if r["_lift_val"] > 0]
-            neg = [r for r in buyer_results if r["_lift_val"] < 0]
-            rec = f"**{group} — Buyer segment:**\n\n"
-            if pos:
-                rec += "**Positive:** " + ", ".join([f"{r['Metric']} {r['Lift']}" for r in pos]) + "\n\n"
-            if neg:
-                rec += "**Negative:** " + ", ".join([f"{r['Metric']} {r['Lift']}" for r in neg]) + "\n\n"
-            if pos and not neg:
-                rec += "✅ **Recommendation: ship Test version.**"
-            elif neg and not pos:
-                rec += "❌ **Recommendation: do not ship.**"
-            else:
-                rec += "⚠️ **Mixed results. Review trade-offs.**"
-            rec += "\n\n> ℹ️ Connect Claude API for AI-generated narrative."
-        st.markdown(rec)
+            test_results_context = ""
+            for seg, rows in all_results.items():
+                test_results_context += f"\nSegment: {seg}\n"
+                for r in rows:
+                    test_results_context += (
+                        f"- Metric: {r['Metric']}, Test Rate: {r['Test']}, Control Rate: {r['Control']}, "
+                        f"Lift: {r['Lift']}, p-value: {r['p-value']}, Stat Significant: {r['Significant']}\n"
+                    )
+
+            system_prompt = (
+                "You are a Senior Data Scientist and Product Experimentation Expert. "
+                "Your task is to interpret statistical A/B test results. "
+                "You enforce strict statistical guardrails: if p-value >= 0.05, the result is NOT statistically significant, "
+                "and you must strictly warn against implementing changes based on statistical noise, even if Lift looks positive."
+            )
+
+            user_prompt = f"""
+                Analyze the following statistical test results for the experiment group '{group}':
+                {test_results_context}
+
+                Provide a professional analysis in English structured as follows:
+                1. **Core Verdict**: Clear data-driven recommendation (Launch Test completely / Drop Test / Roll out only to specific segments / Continue testing).
+                2. **Statistical Breakdown**: Briefly interpret why this choice is made based on p-values and segment-specific differences (especially focus on 'Buyer' vs 'Not Buyer' metrics).
+                3. **Product Hypotheses**: Give a product-driven explanation (1-2 sentences) of why the feature might have performed this way.
+                """
+
+            with st.spinner("🤖 Groq is working!..."):
+                try:
+                    completion = groq_client.chat.completions.create(
+                        model="llama-3.1-70b-versatile",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        temperature=0.1,
+                    )
+                    st.markdown(completion.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"Recommendations Generation Mistake: {e}")
