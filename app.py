@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from scipy.stats import chi2_contingency
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
