@@ -62,15 +62,10 @@ if tab_choice == "📈 Monitoring":
     st.title("📈 Email Monitoring")
 
     # Filters
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        segment = st.selectbox("Segment", ["All", "Buyer", "Not Buyer"])
-    with col2:
-        rule = st.selectbox("Rule", ["All"] + sorted(df["rule"].unique().tolist()))
-    with col3:
-        response = st.selectbox("Response", ["All"] + sorted(df["response"].unique().tolist()))
-    with col4:
-        threshold = st.slider("Alert threshold (drop %)", 5, 30, 15)
+    segment = st.sidebar.selectbox("Segment", ["All", "Buyer", "Not Buyer"])
+    rule = st.sidebar.selectbox("Rule", ["All"] + sorted(df["rule"].unique().tolist()))
+    response = st.sidebar.selectbox("Response", ["All"] + sorted(df["response"].unique().tolist()))
+    threshold = st.sidebar.slider("Alert threshold (drop %)", 5, 30, 15)
 
     # Apply filters
     df_sub = df.copy()
