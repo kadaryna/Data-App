@@ -126,6 +126,13 @@ if tab_choice == "📈 Monitoring":
         date_max = df_sub["date"].max().date()
         date_range = st.date_input("Date range", [date_min, date_max], min_value=date_min, max_value=date_max)
 
+    daily_chart = daily.copy()
+    if len(date_range) == 2:
+        daily_chart = daily_chart[
+            (daily_chart["date"].dt.date >= date_range[0]) &
+            (daily_chart["date"].dt.date <= date_range[1])
+            ]
+
     mean_val = daily[metric_choice].mean()
     alert_val = mean_val * (1 - threshold / 100)
 
