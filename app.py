@@ -151,19 +151,18 @@ if tab_choice == "📈 Monitoring":
 
     fig = go.Figure()
 
-    # Sends volume as bars on secondary y-axis
-    fig.add_trace(go.Bar(
-        x=daily_chart["date"], y=daily_chart["sends"],
-        name="Sends", marker_color="#D0E4F7", opacity=0.6,
-        yaxis="y2"
-    ))
-
     # Main metric line
     fig.add_trace(go.Scatter(
         x=daily_chart["date"], y=daily_chart[metric_choice],
         mode="lines+markers", name=metric_choice,
         line=dict(color="#4472C4", width=2),
         yaxis="y1"
+    ))
+    # Sends volume as bars on secondary y-axis
+    fig.add_trace(go.Bar(
+        x=daily_chart["date"], y=daily_chart["sends"],
+        name="Sends", marker_color="#D0E4F7", opacity=0.6,
+        yaxis="y2"
     ))
 
     fig.add_hline(y=alert_val, line_dash="dot", line_color="red",
