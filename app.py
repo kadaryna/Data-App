@@ -120,7 +120,7 @@ if tab_choice == "📈 Monitoring":
 
     fig = go.Figure()
     fig.add_trace(
-        go.Bar(x=daily["date"], y=daily["sends"], name='Lists sent', color = "#D3D3D3")
+        go.Bar(x=daily["date"], y=daily["sends"], name='Lists sent', marker = dict(color="#D3D3D3"))
     )
     fig.add_trace(go.Scatter(
         x=daily["date"], y=daily[metric_choice],
