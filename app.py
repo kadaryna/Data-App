@@ -117,7 +117,7 @@ if tab_choice == "📈 Monitoring":
 
     # Charts
     st.subheader("Metrics over time")
-    chart_col1, chart_col2 = st.columns([2, 1])
+    chart_col1, chart_col2 = st.columns(2)
     with chart_col1:
         metric_choice = st.selectbox("Metric", ["delivery_rate", "open_rate", "ctr", "open_to_click", "paid_spend_rate",
                                                 "click_to_spend", "avg_not_free_credits"])
