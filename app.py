@@ -155,7 +155,7 @@ if tab_choice == "📈 Monitoring":
     fig.add_trace(go.Bar(
         x=daily_chart["date"], y=daily_chart["sends"],
         name="Sends", marker_color="#D0E4F7", opacity=0.4,
-        yaxis="y2", hoverinfo="skip"
+        yaxis="y1", hoverinfo="skip"
     ))
 
     # Metric line on top
@@ -163,7 +163,7 @@ if tab_choice == "📈 Monitoring":
         x=daily_chart["date"], y=daily_chart[metric_choice],
         mode="lines+markers", name=metric_choice,
         line=dict(color="#4472C4", width=2),
-        yaxis="y1"
+        yaxis="y2"
     ))
 
     fig.add_hline(y=alert_val, line_dash="dot", line_color="red",
@@ -179,8 +179,8 @@ if tab_choice == "📈 Monitoring":
     fig.update_layout(
         height=350,
         margin=dict(t=20),
-        yaxis=dict(tickformat=y1_format, title=metric_choice),
-        yaxis2=dict(title="Sends", overlaying="y", side="right", showgrid=False),
+        yaxis=dict(title="Sends", showgrid=False),
+        yaxis2=dict(tickformat=y1_format, title=metric_choice, overlaying="y", side="right"),
         legend=dict(orientation="h", y=1.1),
         barmode="overlay"
     )
