@@ -30,9 +30,14 @@ def load_data():
         df[col] = pd.to_datetime(df[col], errors='coerce')
 
     df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+    df['response'] = df['response'].str.strip().str.lower()
     df['buyer'] = df['buyer'].str.strip()
     df['rule'] = df['rule'].str.strip()
     df['not_free_credits'] = pd.to_numeric(df['not_free_credits'], errors='coerce').fillna(0)
+    df['total_credits'] = pd.to_numeric(df['total_credits'], errors='coerce').fillna(0)
+
+    df['is_buyer'] = (df['buyer'] == 'Buyer').astype(int)
+    df['is_delivered'] = df['delivery_ts'].notna().astype(int)
     df['is_read'] = df['read_ts'].notna().astype(int)
     df['is_clicked'] = df['click_ts'].notna().astype(int)
     df['is_paid_spend'] = (df['not_free_credits'] > 0).astype(int)
@@ -76,10 +81,17 @@ if tab_choice == "📈 Monitoring":
         sends=("is_read", "count"),
         opens=("is_read", "sum"),
         clicks=("is_clicked", "sum"),
+        deliveries=("is_delivered", "sum"),
+        spends=("is_paid_spend", "sum")
     ).reset_index()
-    daily["open_rate"]  = daily["opens"]  / daily["sends"]
-    daily["ctr"]        = daily["clicks"] / daily["sends"]
+
+    daily["delivery_rate"] = daily["deliveries"] / daily["sends"]
+    daily["open_rate"]  = daily["opens"]  / daily["deliveries"]
+    daily["ctr"]        = daily["clicks"] / daily["deliveries"]
     daily["open_to_click"] = daily["clicks"] / daily["opens"].replace(0, np.nan)
+    daily["paid_spend_rate"] = daily["spends"] / daily["sends"]
+    daily["click_to_spend"] = daily["spends"] / daily["clicks"]
+    # daily["avg_not_free_credits"] = daily.loc[daily['is_clicked']==1, 'not_free_credits'].mean()
 
     # KPI cards
     st.subheader("KPIs")
