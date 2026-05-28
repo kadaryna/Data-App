@@ -85,13 +85,12 @@ if tab_choice == "📈 Monitoring":
         spends=("is_paid_spend", "sum")
     ).reset_index()
 
-    daily = daily.merge(
+    daily["avg_not_free_credits"] = (
         df_sub[df_sub["is_clicked"] == 1]
-        .groupby("date").agg(
-            avg_not_free_credits=("not_free_credits", "mean"))
-        .reset_index(),
-        on="date",
-        how="left"
+        .groupby("date")["not_free_credits"]
+        .mean()
+        .reindex(daily["date"])
+        .values
     )
 
     daily["delivery_rate"] = daily["deliveries"] / daily["sends"]
