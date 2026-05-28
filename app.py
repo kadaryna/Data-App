@@ -52,23 +52,27 @@ if tab_choice == "📈 Monitoring":
     st.title("📈 Email Monitoring")
 
     # Filters
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         segment = st.selectbox("Segment", ["All", "Buyer", "Non-Buyer"])
     with col2:
         rule = st.selectbox("Rule", ["All"] + sorted(df["rule"].unique().tolist()))
     with col3:
+        response = st.selectbox("Response", ["All"] + sorted(df["response"].unique().tolist()))
+    with col4:
         threshold = st.slider("Alert threshold (drop %)", 5, 30, 15)
 
     # Apply filters
-    dff = df.copy()
+    df_sub = df.copy()
     if segment != "All":
-        dff = dff[dff["buyer"] == segment]
+        df_sub = df_sub[df_sub["buyer"] == segment]
     if rule != "All":
-        dff = dff[dff["rule"] == rule]
+        df_sub = df_sub[df_sub["rule"] == rule]
+    if response != "All":
+        df_sub = df_sub[df_sub["response"] == response]
 
     # Daily metrics
-    daily = dff.groupby("date").agg(
+    daily = df_sub.groupby("date").agg(
         sends=("is_read", "count"),
         opens=("is_read", "sum"),
         clicks=("is_clicked", "sum"),
@@ -119,7 +123,7 @@ if tab_choice == "📈 Monitoring":
 
     # Rule breakdown
     st.subheader("Breakdown by Rule")
-    rule_df = dff.groupby("rule").agg(
+    rule_df = df_sub.groupby("rule").agg(
         sends=("is_read", "count"),
         open_rate=("is_read", "mean"),
         ctr=("is_clicked", "mean"),
