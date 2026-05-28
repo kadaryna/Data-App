@@ -141,7 +141,6 @@ if tab_choice == "📈 Monitoring":
         x=daily_chart["date"], y=daily_chart[metric_choice],
         mode="lines+markers", name=metric_choice, line=dict(color="#4472C4", width=2)
     ))
-    fig.add_hline(y=mean_val,   line_dash="dash", line_color="gray",  annotation_text="avg")
     fig.add_hline(y=alert_val,  line_dash="dot",  line_color="red",   annotation_text=f"alert -{threshold}%")
     if metric_choice == "avg_not_free_credits":
         fig.update_yaxes(tickformat=".2f")
