@@ -118,7 +118,7 @@ if tab_choice == "📈 Monitoring":
     mean_val = daily[metric_choice].mean()
     alert_val = mean_val * (1 - threshold / 100)
 
-    fig = go.Figure()
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(
         go.Bar(x=daily["date"], y=daily["sends"], name='Lists sent', marker = dict(color="#D3D3D3")),
         secondary_y=True
