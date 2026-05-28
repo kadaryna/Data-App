@@ -82,7 +82,7 @@ if tab_choice == "📈 Monitoring":
     daily["open_to_click"] = daily["clicks"] / daily["opens"].replace(0, np.nan)
 
     # KPI cards
-    st.subheader("Overall KPIs")
+    st.subheader("KPIs")
     k1, k2, k3, k4 = st.columns(4)
     avg_open = daily["open_rate"].mean()
     avg_ctr  = daily["ctr"].mean()
@@ -98,7 +98,7 @@ if tab_choice == "📈 Monitoring":
 
     # Charts
     st.subheader("Metrics over time")
-    metric_choice = st.selectbox("Metric", ["open_rate", "ctr", "open_to_click"])
+    metric_choice = st.selectbox("Metric", ["delivery_rate","open_rate", "ctr", "open_to_click", "paid_spend_rate", "click_to_spend", "avg_not_free_credits"])
 
     mean_val = daily[metric_choice].mean()
     alert_val = mean_val * (1 - threshold / 100)
