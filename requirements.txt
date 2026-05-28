@@ -3,3 +3,5 @@ pandas
 numpy
 plotly
 scipy
+google-auth
+google-api-python-client
