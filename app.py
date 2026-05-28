@@ -161,8 +161,8 @@ if tab_choice == "📈 Monitoring":
     # Sends volume as bars on secondary y-axis
     fig.add_trace(go.Bar(
         x=daily_chart["date"], y=daily_chart["sends"],
-        name="Sends", marker_color="#D0E4F7", opacity=0.6,
-        yaxis="y2"
+        name="Sends", marker_color="#D0E4F7", opacity=0.4,
+        yaxis="y2", hoverinfo="skip"
     ))
 
     fig.add_hline(y=alert_val, line_dash="dot", line_color="red",
