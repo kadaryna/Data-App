@@ -213,7 +213,7 @@ if tab_choice == "📈 Monitoring":
             with st.spinner("🤖 Groq is analyzing..."):
                 try:
                     completion = groq_client.chat.completions.create(
-                        model="llama-3.1-70b-versatile",
+                        model="llama-3.3-70b-specdec",
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_prompt}
@@ -340,7 +340,7 @@ else:
             with st.spinner("🤖 Groq is working!..."):
                 try:
                     completion = groq_client.chat.completions.create(
-                        model="llama-3.1-70b-versatile",
+                        model="llama-3.3-70b-specdec",
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_prompt}
