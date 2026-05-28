@@ -150,18 +150,40 @@ if tab_choice == "📈 Monitoring":
     alert_val = mean_val * (1 - threshold / 100)
 
     fig = go.Figure()
+
+    # Sends volume as bars on secondary y-axis
+    fig.add_trace(go.Bar(
+        x=daily_chart["date"], y=daily_chart["sends"],
+        name="Sends", marker_color="#D0E4F7", opacity=0.6,
+        yaxis="y2"
+    ))
+
+    # Main metric line
     fig.add_trace(go.Scatter(
         x=daily_chart["date"], y=daily_chart[metric_choice],
-        mode="lines+markers", name=metric_choice, line=dict(color="#4472C4", width=2)
+        mode="lines+markers", name=metric_choice,
+        line=dict(color="#4472C4", width=2),
+        yaxis="y1"
     ))
-    fig.add_hline(y=alert_val,  line_dash="dot",  line_color="red",   annotation_text=f"alert -{threshold}%")
+
+    fig.add_hline(y=alert_val, line_dash="dot", line_color="red",
+                  annotation_text=f"alert -{threshold}%")
+
     if metric_choice == "avg_not_free_credits":
-        fig.update_yaxes(tickformat=".2f")
+        y1_format = ".2f"
     elif metric_choice in ["paid_spend_rate", "click_to_spend"]:
-        fig.update_yaxes(tickformat=".3%")
+        y1_format = ".3%"
     else:
-        fig.update_yaxes(tickformat=".1%")
-    fig.update_layout(height=350, margin=dict(t=20))
+        y1_format = ".1%"
+
+    fig.update_layout(
+        height=350,
+        margin=dict(t=20),
+        yaxis=dict(tickformat=y1_format, title=metric_choice),
+        yaxis2=dict(title="Sends", overlaying="y", side="right", showgrid=False),
+        legend=dict(orientation="h", y=1.1),
+        barmode="overlay"
+    )
     st.plotly_chart(fig, use_container_width=True)
 
     # Alert
