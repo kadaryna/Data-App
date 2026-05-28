@@ -207,7 +207,6 @@ if tab_choice == "📈 Monitoring":
 
     # Heatmaps
     st.subheader("Rule × Response breakdown")
-    hcol1, hcol2 = st.columns(2)
 
     pivot_sends = df_sub.pivot_table(
         index="rule", columns="response", values="is_read",
@@ -218,27 +217,25 @@ if tab_choice == "📈 Monitoring":
         aggfunc="mean", fill_value=0
     )
 
-    with hcol1:
-        fig_h1 = px.imshow(
-            pivot_sends,
-            text_auto=True,
-            color_continuous_scale="Blues",
-            title="Sends volume",
-            aspect="auto"
-        )
-        fig_h1.update_layout(height=300, margin=dict(t=40))
-        st.plotly_chart(fig_h1, use_container_width=True)
+    fig_h1 = px.imshow(
+        pivot_sends,
+        text_auto=True,
+        color_continuous_scale="Blues",
+        title="Sends volume",
+        aspect="auto"
+    )
+    fig_h1.update_layout(height=450, margin=dict(t=40))
+    st.plotly_chart(fig_h1, use_container_width=True)
 
-    with hcol2:
-        fig_h2 = px.imshow(
-            pivot_ctr.round(3),
-            text_auto=".1%",
-            color_continuous_scale="RdYlGn",
-            title="CTR",
-            aspect="auto"
-        )
-        fig_h2.update_layout(height=300, margin=dict(t=40))
-        st.plotly_chart(fig_h2, use_container_width=True)
+    fig_h2 = px.imshow(
+        pivot_ctr.round(3),
+        text_auto=".1%",
+        color_continuous_scale="RdYlGn",
+        title="CTR",
+        aspect="auto"
+    )
+    fig_h2.update_layout(height=450, margin=dict(t=40))
+    st.plotly_chart(fig_h2, use_container_width=True)
 
     # AI Summary placeholder
     st.subheader("🤖 AI Summary")
